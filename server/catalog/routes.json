@@ -1,0 +1,9 @@
+{
+  "stipendium-hungaricum": {
+    "startUrl": "https://scholarship.hec.gov.pk/",
+    "steps": [
+      { "type": "click", "text": "Hungarian Scholarship Program" }
+    ],
+    "recordedAt": "2026-11-01"
+  }
+}

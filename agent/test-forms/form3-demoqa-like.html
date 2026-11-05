@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Form 3 – Bootstrap / React-style layout (like demoqa.com)</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 760px; margin: 30px auto; padding: 0 16px; }
+    .row { display: flex; margin-bottom: 14px; }
+    .col-md-3 { width: 25%; font-weight: bold; }
+    .col-md-9 { width: 75%; }
+    .col-md-4 { width: 33%; margin-right: 8px; }
+    .form-control { width: 100%; padding: 6px; box-sizing: border-box; }
+    /* styled radios: real input invisible, label clickable (like Bootstrap custom-control) */
+    .custom-control { display: inline-block; position: relative; margin-right: 14px; }
+    .custom-control-input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    .custom-control-label { padding-left: 4px; cursor: pointer; }
+    .custom-control-input:checked + .custom-control-label { color: #06c; font-weight: bold; }
+    /* react-select look-alike */
+    .rs-container { position: relative; border: 1px solid #ccc; border-radius: 4px; padding: 6px; }
+    .rs-placeholder { color: #888; position: absolute; left: 8px; top: 6px; pointer-events: none; }
+    .rs-input { border: none; outline: none; width: 100%; background: transparent; }
+    .rs-menu { position: absolute; left: 0; right: 0; top: 100%; background: #fff; border: 1px solid #ccc; z-index: 5; }
+    .rs-option { padding: 6px; cursor: pointer; }
+    .rs-option:hover { background: #def; }
+    .rs-value { position: absolute; left: 8px; top: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Practice Form</h1>
+  <form id="userForm">
+    <div class="row" id="userName-wrapper">
+      <div class="col-md-3"><label class="form-label" id="userName-label">Name</label></div>
+      <div class="col-md-4"><input placeholder="First Name" type="text" id="firstName" class="form-control" required></div>
+      <div class="col-md-4"><input placeholder="Last Name" type="text" id="lastName" class="form-control" required></div>
+    </div>
+
+    <div class="row" id="userEmail-wrapper">
+      <div class="col-md-3"><label class="form-label" id="userEmail-label">Email</label></div>
+      <div class="col-md-9"><input placeholder="name@example.com" type="email" id="userEmail" class="form-control"></div>
+    </div>
+
+    <div class="row" id="genterWrapper">
+      <div class="col-md-3">Gender</div>
+      <div class="col-md-9">
+        <div class="custom-control"><input name="gender" type="radio" id="gender-radio-1" class="custom-control-input" value="Male" required><label for="gender-radio-1" class="custom-control-label">Male</label></div>
+        <div class="custom-control"><input name="gender" type="radio" id="gender-radio-2" class="custom-control-input" value="Female"><label for="gender-radio-2" class="custom-control-label">Female</label></div>
+        <div class="custom-control"><input name="gender" type="radio" id="gender-radio-3" class="custom-control-input" value="Other"><label for="gender-radio-3" class="custom-control-label">Other</label></div>
+      </div>
+    </div>
+
+    <div class="row" id="userNumber-wrapper">
+      <div class="col-md-3"><label class="form-label" id="userNumber-label">Mobile(10 Digits)</label></div>
+      <div class="col-md-9"><input placeholder="Mobile Number" type="text" id="userNumber" maxlength="10" minlength="10" pattern="\d*" class="form-control" required></div>
+    </div>
+
+    <div class="row" id="dateOfBirth-wrapper">
+      <div class="col-md-3"><label class="form-label" id="dateOfBirth-label">Date of Birth</label></div>
+      <!-- pre-filled with TODAY's date, like the real date picker -->
+      <div class="col-md-9"><div class="react-datepicker-wrapper"><div class="react-datepicker__input-container">
+        <input type="text" id="dateOfBirthInput" class="form-control" value="">
+      </div></div></div>
+    </div>
+
+    <div class="row" id="subjectsWrapper">
+      <div class="col-md-3"><label class="form-label" id="subjects-label">Subjects</label></div>
+      <div class="col-md-9"><div class="subjects-auto-complete__container rs-container"><div class="subjects-auto-complete__control"><div class="subjects-auto-complete__value-container"><div><input id="subjectsInput" type="text" autocomplete="off" class="rs-input"></div></div></div></div></div>
+    </div>
+
+    <div class="row" id="hobbiesWrapper">
+      <div class="col-md-3">Hobbies</div>
+      <div class="col-md-9">
+        <div class="custom-control"><input type="checkbox" id="hobbies-checkbox-1" class="custom-control-input" value="1"><label for="hobbies-checkbox-1" class="custom-control-label">Sports</label></div>
+        <div class="custom-control"><input type="checkbox" id="hobbies-checkbox-2" class="custom-control-input" value="2"><label for="hobbies-checkbox-2" class="custom-control-label">Reading</label></div>
+        <div class="custom-control"><input type="checkbox" id="hobbies-checkbox-3" class="custom-control-input" value="3"><label for="hobbies-checkbox-3" class="custom-control-label">Music</label></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-3"><label class="form-label">Picture</label></div>
+      <div class="col-md-9"><div class="form-file"><label class="form-file-label" for="uploadPicture">Select picture</label><input id="uploadPicture" type="file" accept="image/*"></div></div>
+    </div>
+
+    <div class="row" id="currentAddress-wrapper">
+      <div class="col-md-3"><label class="form-label" id="currentAddress-label">Current Address</label></div>
+      <div class="col-md-9"><textarea placeholder="Current Address" rows="3" id="currentAddress" class="form-control"></textarea></div>
+    </div>
+
+    <div class="row" id="stateCity-wrapper">
+      <div class="col-md-3"><label class="form-label" id="stateCity-label">State and City</label></div>
+      <div class="col-md-4"><div id="state" class="rs-container css-2b097c-container">
+        <div class="css-yk16xz-control"><div class="rs-placeholder css-1wa3eu0-placeholder">Select State</div>
+        <div><input id="react-select-3-input" type="text" autocomplete="off" aria-autocomplete="list" class="rs-input"></div></div>
+      </div></div>
+      <div class="col-md-4"><div id="city" class="rs-container css-2b097c-container">
+        <div class="css-yk16xz-control"><div class="rs-placeholder css-1wa3eu0-placeholder">Select City</div>
+        <div><input id="react-select-4-input" type="text" autocomplete="off" aria-autocomplete="list" class="rs-input"></div></div>
+      </div></div>
+    </div>
+
+    <button type="submit" id="submit">Submit</button>
+  </form>
+
+  <script>
+    // date input pre-filled with today, format "23 Oct 2026"
+    const d = new Date();
+    const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    document.getElementById('dateOfBirthInput').value = `${String(d.getDate()).padStart(2,'0')} ${M[d.getMonth()]} ${d.getFullYear()}`;
+
+    // tiny react-select look-alike: type to filter, Enter or click picks the first match
+    const STATES = ['Punjab', 'Sindh', 'Khyber Pakhtunkhwa', 'Balochistan'];
+    const CITIES = { Punjab: ['Lahore','Multan'], Sindh: ['Karachi','Sukkur','Hyderabad'], 'Khyber Pakhtunkhwa': ['Peshawar'], Balochistan: ['Quetta'] };
+    function makeSelect(box, getOptions, onPick) {
+      const input = box.querySelector('input'), ph = box.querySelector('.rs-placeholder');
+      let menu = null, value = null;
+      const close = () => { menu?.remove(); menu = null; };
+      const pick = (v) => {
+        value = v; input.value = ''; close();
+        ph.textContent = v; ph.className = 'rs-value css-1uccc91-singleValue';
+        onPick && onPick(v);
+      };
+      const render = () => {
+        close();
+        const q = input.value.toLowerCase();
+        const opts = getOptions().filter((o) => o.toLowerCase().includes(q));
+        menu = document.createElement('div'); menu.className = 'rs-menu';
+        opts.forEach((o) => { const el = document.createElement('div'); el.className = 'rs-option css-option'; el.textContent = o; el.onmousedown = () => pick(o); menu.appendChild(el); });
+        box.appendChild(menu);
+        return opts;
+      };
+      box.addEventListener('click', () => { input.focus(); render(); });
+      input.addEventListener('input', render);
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const o = render(); if (o[0]) pick(o[0]); } });
+      input.addEventListener('blur', () => setTimeout(close, 150));
+    }
+    let state = null;
+    makeSelect(document.getElementById('state'), () => STATES, (v) => (state = v));
+    makeSelect(document.getElementById('city'), () => CITIES[state] || []);
+
+    document.getElementById('userForm').addEventListener('submit', (e) => { e.preventDefault(); alert('Submitted'); });
+  </script>
+</body>
+</html>

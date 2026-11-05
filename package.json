@@ -1,0 +1,36 @@
+{
+  "name": "applymate",
+  "version": "1.3.0",
+  "private": true,
+  "description": "ApplyMate: AI-driven platform for automated scholarship and job applications (FYP 23F-13)",
+  "type": "commonjs",
+  "scripts": {
+    "server": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "client": "npm --prefix client run dev",
+    "agent": "node agent/index.js",
+    "test-scrapers": "node server/scrapers/test-scrapers.js",
+    "test-scrapers-show": "node server/scrapers/test-scrapers.js --show",
+    "scan": "node agent/scan-url.js",
+    "teach": "node agent/teach.js",
+    "check-forms": "node server/scripts/check-forms.js"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.65",
+    "@tesseract.js-data/eng": "^1.0.0",
+    "bcryptjs": "^2.4.3",
+    "cheerio": "^1.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.0",
+    "express": "^4.21.2",
+    "fast-xml-parser": "^4.5.1",
+    "jsonwebtoken": "^9.0.2",
+    "mammoth": "^1.8.0",
+    "mongoose": "^8.9.5",
+    "multer": "^2.0.2",
+    "nodemailer": "^6.9.16",
+    "pdfjs-dist": "^4.10.38",
+    "playwright": "^1.61.1",
+    "tesseract.js": "^5.1.1"
+  }
+}

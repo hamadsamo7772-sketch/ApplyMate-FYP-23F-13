@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Form 1 – Scholarship Application</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 640px; margin: 30px auto; padding: 0 16px; }
+    .row { margin-bottom: 14px; }
+    label, legend { display: block; font-weight: bold; margin-bottom: 4px; }
+    input[type=text], input[type=email], input[type=date], select { width: 100%; padding: 6px; box-sizing: border-box; }
+    .inline label { display: inline; font-weight: normal; }
+    .error { color: #c00; font-size: 13px; margin-top: 4px; }
+    .hidden { display: none; }
+    button { padding: 8px 16px; margin-right: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Merit Scholarship Application 2026</h1>
+
+  <form id="app">
+    <!-- 1. label with for= -->
+    <div class="row">
+      <label for="appName">Applicant Name *</label>
+      <input type="text" id="appName" required>
+    </div>
+
+    <!-- 2. label wrapping the input -->
+    <div class="row">
+      <label>Guardian's Name <input type="text" name="g_name" required></label>
+    </div>
+
+    <!-- 3. autocomplete attribute -->
+    <div class="row">
+      <label for="mail">E-mail</label>
+      <input type="email" id="mail" autocomplete="email" required>
+    </div>
+
+    <!-- 4. no label, placeholder only -->
+    <div class="row">
+      <input type="text" name="contact" placeholder="Mobile No (WhatsApp)" required>
+    </div>
+
+    <!-- 5. pattern validation -->
+    <div class="row">
+      <label for="nic">National Identity Card #</label>
+      <input type="text" id="nic" pattern="\d{5}-\d{7}-\d" required>
+      <div class="error hidden" id="nicErr">CNIC must be in the format 12345-1234567-1</div>
+    </div>
+
+    <!-- 6. date -->
+    <div class="row">
+      <label for="dob">Date of Birth</label>
+      <input type="date" id="dob" required>
+    </div>
+
+    <!-- 7. select with placeholder option -->
+    <div class="row">
+      <label for="city">City of Residence</label>
+      <select id="city" required>
+        <option value="">-- Select City --</option>
+        <option>Karachi</option>
+        <option>Lahore</option>
+        <option>Hyderabad</option>
+        <option>Sukkur</option>
+      </select>
+    </div>
+
+    <!-- 8. radio group inside fieldset -->
+    <fieldset class="row">
+      <legend>Gender</legend>
+      <span class="inline"><input type="radio" name="gender" id="gm" value="M" required><label for="gm">Male</label></span>
+      <span class="inline"><input type="radio" name="gender" id="gf" value="F"><label for="gf">Female</label></span>
+    </fieldset>
+
+    <!-- 9. program select -->
+    <div class="row">
+      <label for="prog">Program Applied For</label>
+      <select id="prog" required>
+        <option value="">Choose a program</option>
+        <option>BS Computer Science</option>
+        <option>BS Artificial Intelligence</option>
+        <option>MS Computer Science</option>
+      </select>
+    </div>
+
+    <!-- 10. field with no matching profile data -->
+    <div class="row">
+      <label for="color">Favourite colour</label>
+      <input type="text" id="color">
+    </div>
+
+    <!-- 11. file upload -->
+    <div class="row">
+      <label for="cv">Upload CV (PDF)</label>
+      <input type="file" id="cv" accept=".pdf">
+    </div>
+
+    <!-- 12. checkboxes: one required consent, one newsletter -->
+    <div class="row inline">
+      <input type="checkbox" id="terms" required>
+      <label for="terms">I agree to the terms and privacy policy</label>
+    </div>
+    <div class="row inline">
+      <input type="checkbox" id="news">
+      <label for="news">Send me the monthly newsletter</label>
+    </div>
+
+    <button type="button" id="draft">Save Draft</button>
+    <button type="submit">Submit Application</button>
+  </form>
+
+  <div id="done" class="hidden">
+    <h2>Thank you! Your application has been received.</h2>
+  </div>
+
+  <script>
+    const form = document.getElementById('app');
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const nic = document.getElementById('nic');
+      const err = document.getElementById('nicErr');
+      if (!nic.checkValidity()) { err.classList.remove('hidden'); return; }
+      err.classList.add('hidden');
+      form.classList.add('hidden');
+      document.getElementById('done').classList.remove('hidden');
+    });
+  </script>
+</body>
+</html>

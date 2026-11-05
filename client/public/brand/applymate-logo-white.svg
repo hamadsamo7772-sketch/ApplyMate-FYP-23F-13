@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 64" width="990" height="192">
+  <rect width="64" height="64" rx="16" fill="#ffffff"/>
+  <path d="M18 46l14-28 14 28M24.5 35.5h15" stroke="#3B3FD8" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="80" y="44" font-family="Instrument Sans, Segoe UI, Arial, sans-serif" font-size="36" font-weight="700" fill="#ffffff" letter-spacing="-0.5">ApplyMate</text>
+</svg>

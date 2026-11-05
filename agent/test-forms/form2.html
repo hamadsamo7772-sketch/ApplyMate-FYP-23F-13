@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Form 2 – Multi-step Scholarship Portal</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 640px; margin: 30px auto; padding: 0 16px; }
+    .row { margin-bottom: 14px; }
+    label { display: block; font-weight: bold; margin-bottom: 4px; }
+    input[type=text], input[type=email], input[type=tel], select, textarea { width: 100%; padding: 6px; box-sizing: border-box; }
+    .step { display: none; border: 1px solid #ccc; padding: 16px; border-radius: 6px; }
+    .step.active { display: block; }
+    .progress { color: #666; margin-bottom: 10px; }
+    .hidden { display: none; }
+    .error { color: #c00; font-size: 13px; }
+    .captcha { border: 1px solid #999; background: #f6f6f6; padding: 12px; width: 260px; margin: 14px 0; }
+    .captcha label { display: inline; font-weight: normal; }
+    button { padding: 8px 16px; margin-right: 8px; }
+  </style>
+</head>
+<body>
+  <h1>International Exchange Scholarship 2027</h1>
+  <div class="progress" id="progress">Step 1 of 3</div>
+
+  <form id="app" novalidate>
+    <!-- ================= STEP 1: personal ================= -->
+    <div class="step active" data-step="1">
+      <h2>Personal Information</h2>
+      <div class="row"><label for="fn">First Name</label><input type="text" id="fn" required></div>
+      <div class="row"><label for="ln">Surname</label><input type="text" id="ln" required></div>
+      <div class="row"><label for="em">Email Address</label><input type="email" id="em" required></div>
+      <div class="row"><label for="ph">Contact Number</label><input type="tel" id="ph" required></div>
+      <div class="row"><label for="nat">Nationality</label><input type="text" id="nat" required></div>
+      <div class="error hidden" id="err1" role="alert">Please complete all fields on this step.</div>
+      <button type="button" class="next">Next</button>
+    </div>
+
+    <!-- ================= STEP 2: education (progressive field) ================= -->
+    <div class="step" data-step="2">
+      <h2>Education</h2>
+      <div class="row">
+        <label for="deg">Highest Qualification</label>
+        <select id="deg" required>
+          <option value="">Please select</option>
+          <option>Intermediate / A-Levels</option>
+          <option>BS Computer Science</option>
+          <option>BS Electrical Engineering</option>
+          <option>MS / MPhil</option>
+        </select>
+      </div>
+      <div class="row"><label for="uni">University / Institution</label><input type="text" id="uni" required></div>
+      <div class="row"><label for="gpa">CGPA (out of 4.00)</label><input type="text" id="gpa" required></div>
+      <div class="row">
+        <label for="ctry">Country of Residence</label>
+        <select id="ctry" required>
+          <option value="">-- Select --</option>
+          <option>Pakistan</option>
+          <option>India</option>
+          <option>Bangladesh</option>
+        </select>
+      </div>
+      <!-- appears only after choosing Pakistan -->
+      <div class="row hidden" id="provRow">
+        <label for="prov">Province</label>
+        <select id="prov">
+          <option value="">-- Select --</option>
+          <option>Punjab</option>
+          <option>Sindh</option>
+          <option>Khyber Pakhtunkhwa</option>
+          <option>Balochistan</option>
+        </select>
+      </div>
+      <div class="error hidden" id="err2" role="alert">Please complete all fields on this step.</div>
+      <button type="button" class="prev">Previous</button>
+      <button type="button" class="next">Continue</button>
+    </div>
+
+    <!-- ================= STEP 3: documents + essay + CAPTCHA ================= -->
+    <div class="step" data-step="3">
+      <h2>Documents &amp; Statement</h2>
+      <div class="row"><label for="tr">Upload Transcript</label><input type="file" id="tr"></div>
+      <div class="row">
+        <label for="sop">Statement of Purpose (max 300 words)</label>
+        <textarea id="sop" rows="5" required></textarea>
+      </div>
+
+      <!-- simulated CAPTCHA: the user must tick it themselves -->
+      <div class="captcha g-recaptcha">
+        <input type="checkbox" id="robot"><label for="robot">I'm not a robot</label>
+        <textarea name="g-recaptcha-response" class="hidden"></textarea>
+      </div>
+
+      <button type="button" class="prev">Previous</button>
+      <button type="submit">Submit Application</button>
+    </div>
+  </form>
+
+  <div id="done" class="hidden"><h2>Thank you! Your application has been submitted.</h2></div>
+
+  <script>
+    let step = 1;
+    const show = (n) => {
+      document.querySelectorAll('.step').forEach((s) => s.classList.toggle('active', +s.dataset.step === n));
+      document.getElementById('progress').textContent = `Step ${n} of 3`;
+      step = n;
+    };
+    const stepValid = (n) =>
+      [...document.querySelectorAll(`.step[data-step="${n}"] [required]`)]
+        .filter((el) => el.offsetParent !== null)
+        .every((el) => el.value.trim() !== '');
+
+    document.querySelectorAll('.next').forEach((b) => b.addEventListener('click', () => {
+      const err = document.getElementById('err' + step);
+      if (!stepValid(step)) { err.classList.remove('hidden'); return; }
+      err.classList.add('hidden');
+      // simulate a slow server
+      setTimeout(() => show(step + 1), 500);
+    }));
+    document.querySelectorAll('.prev').forEach((b) => b.addEventListener('click', () => show(step - 1)));
+
+    document.getElementById('ctry').addEventListener('change', (e) => {
+      const pk = e.target.value === 'Pakistan';
+      document.getElementById('provRow').classList.toggle('hidden', !pk);
+      document.getElementById('prov').required = pk;
+    });
+
+    document.getElementById('robot').addEventListener('change', (e) => {
+      document.querySelector('[name="g-recaptcha-response"]').value =
+        e.target.checked ? 'simulated-captcha-token-0123456789abcdef' : '';
+    });
+
+    document.getElementById('app').addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!stepValid(3) || !document.getElementById('robot').checked) {
+        alert('Please write your statement and complete the CAPTCHA.');
+        return;
+      }
+      document.getElementById('app').classList.add('hidden');
+      document.getElementById('progress').classList.add('hidden');
+      document.getElementById('done').classList.remove('hidden');
+    });
+  </script>
+</body>
+</html>

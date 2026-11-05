@@ -1,0 +1,17 @@
+﻿node_modules/
+client/node_modules/
+client/dist/
+.env
+.env.*
+!.env.example
+agent/.browser-data/
+.browser-data/
+server/uploads/
+agent/runs/
+server/scrapers/debug/
+.ocr-cache
+*.mp4
+*.log
+update.cmd
+update.ps1
+agent/documents/cv.pdf

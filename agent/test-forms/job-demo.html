@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Demo Job Portal – Junior MERN Developer</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f6f6f6; margin: 0; }
+    .wrap { max-width: 560px; margin: 30px auto; background: #fff; padding: 24px; border-radius: 10px; }
+    .banner { background: #fff3cd; padding: 8px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 14px; }
+    h1 { font-size: 22px; }
+    .row { margin-bottom: 14px; }
+    label { display: block; font-weight: bold; margin-bottom: 4px; }
+    input[type=text], input[type=email], select { width: 100%; padding: 8px; box-sizing: border-box; }
+    .upload { border: 2px dashed #bbb; border-radius: 8px; padding: 18px; text-align: center; }
+    .upload .btn { display: inline-block; border: 1px solid #ccc; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-weight: normal; }
+    .muted { color: #777; font-size: 13px; }
+    button { padding: 10px 22px; font-size: 15px; }
+    button:disabled { opacity: .5; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="banner">ApplyMate demo portal: a local practice job form. Nothing is sent anywhere.</div>
+    <h1>Upload your CV to continue applying for Junior MERN Developer at Demo Tech (Sukkur)</h1>
+
+    <form id="apply">
+      <div class="row upload">
+        <p class="muted">Drag file or click to upload</p>
+        <label for="cvfile" class="btn">Browse File</label>
+        <input type="file" id="cvfile" accept=".pdf,.doc,.docx" style="display:none">
+        <p id="cvname" class="muted"></p>
+      </div>
+
+      <div class="row">
+        <label for="salary">Expected Monthly Salary (PKR)</label>
+        <input type="text" id="salary" placeholder="Enter amount..." required>
+      </div>
+
+      <div class="row">
+        <label for="gender">Gender</label>
+        <select id="gender" required>
+          <option value="">Select</option>
+          <option>Male</option>
+          <option>Female</option>
+          <option>Prefer not to say</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" placeholder="e.g. yourname@email.com" required>
+      </div>
+
+      <div class="row">
+        <label for="cnic">CNIC Number</label>
+        <input type="text" id="cnic" placeholder="e.g. 12345-1234567-1" required>
+      </div>
+
+      <!-- anti-bot honeypot: humans leave it empty -->
+      <div class="row">
+        <label for="website">Do not fill this</label>
+        <input type="text" id="website">
+      </div>
+
+      <button type="submit" id="applyBtn" disabled>Apply</button>
+    </form>
+
+    <h2 id="done" class="hidden">✅ Application sent (demo). Thank you!</h2>
+  </div>
+
+  <script>
+    const salary = document.getElementById('salary');
+    salary.addEventListener('input', () => {
+      const d = salary.value.replace(/\D/g, '');
+      salary.value = d ? Number(d).toLocaleString('en-US') : '';
+    });
+    document.getElementById('cvfile').addEventListener('change', (e) => {
+      const f = e.target.files[0];
+      document.getElementById('cvname').textContent = f ? `Selected: ${f.name}` : '';
+      document.getElementById('applyBtn').disabled = !f;
+    });
+    document.getElementById('apply').addEventListener('submit', (e) => {
+      e.preventDefault();
+      document.getElementById('apply').classList.add('hidden');
+      document.getElementById('done').classList.remove('hidden');
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Practice form: long one-page application</title>
+<!-- Patterns copied from a real one-page Erasmus Mundus application (sections, repeated questions,
+     a read-only calendar, combined fields, essays). Nothing is sent anywhere. -->
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 760px; margin: 30px auto; }
+  .form-row { margin: 8px 0; display: grid; grid-template-columns: 280px 1fr; gap: 10px; align-items: center; }
+  textarea { width: 100%; height: 80px; }
+</style>
+</head>
+<body>
+<h1>Practice application (long one-page form)</h1>
+<form onsubmit="return false">
+  <h2>1. Enrolment preferences</h2>
+  <h3>First semester (Home university)</h3>
+  <div class="form-row"><label for="s1c1">First choice *:</label>
+    <select required id="s1c1"><option value="">Please indicate your university of choice</option><option>University A (France)</option><option>University B (Malta)</option><option>University C (Germany)</option></select></div>
+  <div class="form-row"><label for="s1c2">Second choice *:</label>
+    <select required id="s1c2"><option value="">Please indicate your university of choice</option><option>University A (France)</option><option>University B (Malta)</option><option>University C (Germany)</option></select></div>
+  <h3>Second semester (Host university)</h3>
+  <div class="form-row"><label for="s2c1">First choice *:</label>
+    <select required id="s2c1"><option value="">Please indicate your university of choice</option><option>University A (France)</option><option>University B (Malta)</option><option>University C (Germany)</option></select></div>
+
+  <h2>2. Personal data</h2>
+  <div class="form-row"><label for="sex">Sex *:</label><select required id="sex"><option value="">- choose one option -</option><option>Male</option><option>Female</option><option>Other</option></select></div>
+  <div class="form-row"><label for="surname">Family name *:</label><input type="text" required id="surname" placeholder="as written in the international passport, in Latin script"></div>
+  <div class="form-row"><label for="name">First name(s) *:</label><input type="text" required id="name" placeholder="as written in the international passport, in Latin script"></div>
+  <div class="form-row"><label for="borndate">Date of birth *:</label><input type="text" required class="form-input datepicker" id="borndate" name="pd_borndate" readonly></div>
+  <div class="form-row"><label for="bcountry">Country of birth *:</label><input type="text" required id="bcountry"></div>
+  <div class="form-row"><label for="bcity">City/Place of birth *:</label><input type="text" required id="bcity"></div>
+  <div class="form-row"><label for="nat">Nationality *:</label><select required id="nat"><option value="">- choose one option -</option><option>Germany</option><option>Pakistan</option><option>Spain</option></select></div>
+  <div class="form-row"><label for="tel">Telephone *:</label><input type="text" required id="tel"></div>
+  <div class="form-row"><label for="mail">Email : (one valid email) *:</label><input type="email" required id="mail" placeholder="please enter one valid email"></div>
+  <h3>Residential address</h3>
+  <div class="form-row"><label for="street">Street, House and Flat Number *:</label><input type="text" required id="street"></div>
+  <div class="form-row"><label for="pctown">Post Code, Town *:</label><input type="text" required id="pctown"></div>
+  <div class="form-row"><label for="rcountry">Country *:</label><select required id="rcountry"><option value="">- choose one option -</option><option>Germany</option><option>Pakistan</option><option>Spain</option></select></div>
+
+  <h2>3. Academic data</h2>
+  <div class="form-row"><label for="uni">Name of university:</label><input type="text" id="uni"></div>
+  <div class="form-row"><label for="uniloc">Location of university (country):</label><input type="text" id="uniloc"></div>
+  <div class="form-row"><label for="deg">Degree/Programme:</label><input type="text" id="deg"></div>
+  <div class="form-row"><label for="att">Dates of Attendance(Starting-Final Year):</label><input type="text" id="att"></div>
+  <div class="form-row"><label for="mark">Final Mark:</label><input type="text" id="mark"></div>
+
+  <h2>4. Language competence</h2>
+  <div class="form-row"><label for="mt">Mother tongue *:</label><input type="text" required id="mt"></div>
+  <div class="form-row"><label for="loi">Language of instruction of your university first (or most recent) degree *:</label><input type="text" required id="loi"></div>
+  <h3>Other languages</h3>
+  <div class="form-row"><label for="ol">Language:</label><input type="text" id="ol"></div>
+
+  <h2>5. References</h2>
+  <h3>Academic Referee</h3>
+  <div class="form-row"><label for="r1n">Full name *:</label><input type="text" required id="r1n"></div>
+  <div class="form-row"><label for="r1i">Institution *:</label><input type="text" required id="r1i"></div>
+  <div class="form-row"><label for="r1t">Telephone:</label><input type="text" id="r1t"></div>
+  <div class="form-row"><label for="r1e">Email *:</label><input type="email" required id="r1e"></div>
+  <h3>Academic or Work related Referee</h3>
+  <div class="form-row"><label for="r2n">Full name *:</label><input type="text" required id="r2n"></div>
+  <div class="form-row"><label for="r2e">Email *:</label><input type="email" required id="r2e"></div>
+
+  <h2>6. Motivation</h2>
+  <div class="form-row"><label for="mot">State briefly (max 3000 characters) your reasons for applying for the programme *:</label><textarea required id="mot" maxlength="3000"></textarea></div>
+  <div class="form-row"><label for="abs">Abstract (max 500 characters) including information on name, age, nationality, degree, motivation and experience *:</label><textarea required id="abs" maxlength="500"></textarea></div>
+  <div class="form-row"><label for="dis">Please indicate any physical or learning disabilities that you may suffer from:</label><textarea id="dis"></textarea></div>
+  <div class="form-row"><label for="how">How did you come to know about the programme?</label><select id="how"><option value="">- choose one option -</option><option>Website</option><option>Friend</option><option>Social media</option></select></div>
+
+  <p><label><input type="checkbox" required id="agree"> I voluntarily agree that my application information may be shared with the universities *</label></p>
+  <p><button type="button">Apply!</button></p>
+</form>
+<script>$(function () { $('.datepicker').datepicker({ dateFormat: 'dd/mm/yy', changeYear: true, yearRange: '1950:2015' }); });</script>
+</body>
+</html>

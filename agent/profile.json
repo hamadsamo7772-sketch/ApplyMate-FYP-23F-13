@@ -1,0 +1,40 @@
+﻿{
+  "personal": {
+    "fullName": "Ali Raza Khan",
+    "firstName": "Ali",
+    "lastName": "Raza Khan",
+    "fatherName": "Muhammad Raza",
+    "gender": "Male",
+    "dateOfBirth": "2002-03-14",
+    "email": "ali.raza.demo@example.com",
+    "phone": "03123456789",
+    "cnic": "12345-1234567-1",
+    "nationality": "Pakistani"
+  },
+  "address": {
+    "street": "Sukkur, Sindh",
+    "city": "Sukkur",
+    "province": "Sindh",
+    "country": "Pakistan"
+  },
+  "education": {
+    "program": "MS Computer Science",
+    "lastDegree": "BS Computer Science",
+    "institution": "Sukkur IBA University",
+    "cgpa": "3.50"
+  },
+  "job": {
+    "expectedSalary": "80000",
+    "currentSalary": "",
+    "experienceYears": "1",
+    "noticePeriod": "Immediately available",
+    "currentTitle": "Web Development Teacher"
+  },
+  "documents": {
+    "cv": "./documents/cv.pdf",
+    "transcript": "./documents/transcript.pdf",
+    "cnicCopy": "./documents/cnic.pdf",
+    "photo": ""
+  }
+}
+
