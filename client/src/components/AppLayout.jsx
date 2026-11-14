@@ -9,8 +9,8 @@ const NAV = [
   ['/app', 'Home', 'home', true],
   ['/app/scholarships', 'Scholarships', 'cap'],
   ['/app/jobs', 'Jobs', 'briefcase'],
-  ['/app/tracker', 'Application tracker', 'board'],
-  ['/app/activity', 'Agent activity', 'activity'],
+  ['/app/tracker', 'My applications', 'board'],
+  ['/app/activity', 'Agent runs', 'activity'],
 ];
 
 const TITLES = {
@@ -36,45 +36,62 @@ export default function AppLayout() {
 
   return (
     <div className="shell">
-      <aside className={`sidebar ${open ? 'open' : ''}`} aria-label="Main navigation">
-        <Link to="/app" className="brand">
-          <span className="brand-mark"><Logo /></span> ApplyMate
-        </Link>
-        {NAV.map(([to, label, icon, end]) => (
-          <NavLink key={to} to={to} end={end} className="nav-link">
-            <Icon name={icon} /> {label}
-            {to === '/app/activity' && notif.waiting > 0 && <span className="count" title="Runs waiting for you">{notif.waiting}</span>}
-          </NavLink>
-        ))}
-        <div className="nav-sep" />
-        <NavLink to="/app/profile" className="nav-link"><Icon name="user" /> Profile & documents</NavLink>
-        <NavLink to="/app/settings" className="nav-link"><Icon name="settings" /> Account settings</NavLink>
-        <button className="nav-link btn-quiet" style={{ border: 'none', font: 'inherit', cursor: 'pointer', textAlign: 'left' }} onClick={logout}>
-          <Icon name="logout" /> Log out
-        </button>
-        <div className="sidebar-foot">
-          <Icon name="shield" size={16} />
-          <span>AI runs offline on this computer. Your data never leaves it.</span>
-        </div>
-      </aside>
-      {open && <div className="overlay" style={{ zIndex: 30, background: 'rgba(17,19,40,.3)' }} onClick={() => setOpen(false)} />}
-
-      <div className="main">
-        <header className="topbar">
-          <button className="btn btn-quiet btn-icon menu-btn" onClick={() => setOpen(true)} aria-label="Open menu">
-            <Icon name="menu" />
-          </button>
-          <span className="topbar-title">{title}</span>
+      <header className="topnav">
+        <div className="topnav-in">
+          <Link to="/app" className="brand">
+            <span className="brand-mark"><Logo /></span> ApplyMate
+          </Link>
+          <nav className={`topnav-links ${open ? 'open' : ''}`} aria-label="Main navigation">
+            {NAV.map(([to, label, icon, end]) => (
+              <NavLink key={to} to={to} end={end} className="nav-pill">
+                <Icon name={icon} size={16} /> {label}
+                {to === '/app/activity' && notif.waiting > 0 && <span className="count" title="Runs waiting for you">{notif.waiting}</span>}
+              </NavLink>
+            ))}
+            <NavLink to="/app/profile" className="nav-pill only-menu"><Icon name="user" size={16} /> Profile & documents</NavLink>
+            <NavLink to="/app/settings" className="nav-pill only-menu"><Icon name="settings" size={16} /> Account settings</NavLink>
+            <button className="nav-pill only-menu" onClick={logout}><Icon name="logout" size={16} /> Log out</button>
+          </nav>
           <div className="topbar-right">
             <Bell notif={notif} />
-            <Link to="/app/profile" className="avatar" title={user?.name}>{initials}</Link>
+            <UserMenu initials={initials} name={user?.name} logout={logout} />
+            <button className="btn btn-quiet btn-icon menu-btn" onClick={() => setOpen((o) => !o)} aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open}>
+              <Icon name={open ? 'x' : 'menu'} />
+            </button>
           </div>
-        </header>
+        </div>
+      </header>
+
+      <div className="main">
         <main className="content">
           <Outlet context={{ refreshNotifications: notif.reload }} />
         </main>
+        <footer className="app-foot"><Icon name="shield" size={15} /> The AI runs offline on this computer. Your data never leaves it.</footer>
       </div>
       <ChatWidget />
+    </div>
+  );
+}
+
+function UserMenu({ initials, name, logout }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const close = (e) => ref.current && !ref.current.contains(e.target) && setOpen(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+  return (
+    <div className="user-menu" ref={ref}>
+      <button className="avatar" onClick={() => setOpen((o) => !o)} aria-label={`Account menu for ${name || 'you'}`} aria-expanded={open}>{initials}</button>
+      {open && (
+        <div className="user-pop" role="menu">
+          <div className="user-pop-name">{name}</div>
+          <Link to="/app/profile" role="menuitem" onClick={() => setOpen(false)}><Icon name="user" size={16} /> Profile & documents</Link>
+          <Link to="/app/settings" role="menuitem" onClick={() => setOpen(false)}><Icon name="settings" size={16} /> Account settings</Link>
+          <button role="menuitem" onClick={logout}><Icon name="logout" size={16} /> Log out</button>
+        </div>
+      )}
     </div>
   );
 }

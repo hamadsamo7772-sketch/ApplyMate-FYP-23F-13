@@ -1,4 +1,4 @@
-﻿// executor.js â€” performs the planner's actions on the page and checks each one worked.
+﻿// executor.js — performs the planner's actions on the page and checks each one worked.
 // Targets come from scanner.js: every element has data-am-id, so [data-am-id="f3"] is
 // always exactly one element.
 
@@ -30,17 +30,26 @@ function dateVariants(iso, first) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   if (!m) return [iso];
   const [, y, mo, d] = m;
+  // a month-only field ("Starting Semester (mm/yyyy)"): the planner already wrote "08/2023"; try month formats only
+  if (first && !/\d{1,2}\D+\d{1,2}\D+\d{4}|\d{4}\D+\d{1,2}\D+\d{1,2}/.test(first)) {
+    return [...new Set([first, `${mo}/${y}`, `${+mo}/${y}`, `${mo}-${y}`, `${mo}.${y}`, `${y}-${mo}`])];
+  }
   const all = [first, `${+mo}/${+d}/${y}`, `${d}/${mo}/${y}`, `${y}-${mo}-${d}`, `${d}-${mo}-${y}`, `${mo}/${d}/${y}`];
   return [...new Set(all.filter(Boolean))];
 }
+// Does the field show this date? Month/year fields ("08/2023", "Aug 2023") have no day, and that is fine.
 const sameDate = (shown, iso) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   if (!m || !shown) return false;
-  const digits = String(shown).replace(/[^0-9]/g, ' ').trim().split(/\s+/).map(Number);
+  const digits = String(shown).replace(/[^0-9]/g, ' ').trim().split(/\s+/).filter(Boolean).map(Number);
   const [y, mo, d] = [+m[1], +m[2], +m[3]];
   const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-  const hasMonth = digits.includes(mo) || String(shown).toLowerCase().includes(MONTHS[mo - 1]);
-  return digits.includes(y) && digits.includes(d) && hasMonth;
+  const named = String(shown).toLowerCase().includes(MONTHS[mo - 1]);
+  if (!digits.includes(y)) return false;
+  const rest = digits.filter((n) => n !== y);
+  if (named) return rest.length === 0 || rest.includes(d);       // "Aug 2023" or "14 Aug 2023"
+  if (rest.length === 1) return rest[0] === mo;                    // "08/2023"
+  return rest.includes(mo) && rest.includes(d);                    // "14/08/2023", "08/14/2023"
 };
 
 // A read-only box that opens a calendar (jQuery UI, flatpickr): typing is impossible, so the date is set
@@ -65,11 +74,52 @@ async function pickDate(page, a) {
   a.value = now;
 }
 
+// jQuery UI calendars with month/year lists ("Starting Semester (mm/yyyy)"): many sites rewrite the box from those
+// lists when the calendar closes, so typed text is lost. Choose the month and year in the calendar itself instead.
+async function jqueryCalendar(page, a, loc) {
+  const root = where(page, a.target);
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(a.iso || '');
+  if (!m) return false;
+  const [y, mo, d] = [+m[1], +m[2], +m[3]];
+  await loc.click({ timeout: 3000 }).catch(() => {});
+  await page.waitForTimeout(300);
+  const cal = () => root.locator('#ui-datepicker-div:visible, .ui-datepicker:visible').first();
+  if (!(await cal().count())) return false;
+  const pick = async (css, value) => {
+    const s = cal().locator(css);
+    if (!(await s.count())) return false;
+    await s.first().selectOption({ value: String(value) }, { timeout: 2000 }).catch(() => {});
+    await page.waitForTimeout(200); // the calendar redraws after each choice
+    return true;
+  };
+  await pick('select.ui-datepicker-year', y);
+  await pick('select.ui-datepicker-month', mo - 1);
+  // a month-only field closes with "Done"; a full date is chosen by clicking its day
+  const monthOnly = a.value && !/\d{1,2}\D+\d{1,2}\D+\d{4}|\d{4}\D+\d{1,2}\D+\d{1,2}/.test(a.value);
+  const day = cal().locator('td[data-handler="selectDay"] a').filter({ hasText: new RegExp(`^\\s*${d}\\s*$`) }).first();
+  const done = cal().locator('.ui-datepicker-close, button:has-text("Done")').first();
+  if (!monthOnly && (await day.count())) await day.click({ timeout: 2000 }).catch(() => {});
+  else if (await done.count()) await done.click({ timeout: 2000 }).catch(() => {});
+  else await page.keyboard.press('Escape').catch(() => {});
+  await page.waitForTimeout(250);
+  const now = await loc.inputValue().catch(() => '');
+  if (now && sameDate(now, a.iso)) { a.value = now; return true; }
+  return false;
+}
+
 async function fill(page, a) {
-  if (a.picker) return pickDate(page, a);
+  if (a.picker) {
+    try { return await pickDate(page, a); } catch (err) {
+      if (await jqueryCalendar(page, a, where(page, a.target).locator(sel(a.target)))) return;
+      throw err;
+    }
+  }
   const loc = where(page, a.target).locator(sel(a.target));
 
   if (isDateKey(a.key) && a.iso) {
+    // a jQuery UI calendar opens on click: use it first, it is what the site trusts
+    const hasCalendar = await loc.evaluate((el) => el.classList.contains('hasDatepicker')).catch(() => false);
+    if (hasCalendar && (await jqueryCalendar(page, a, loc))) return;
     for (const v of dateVariants(a.iso, a.value)) {
       await loc.fill('');
       await loc.fill(v);
@@ -80,6 +130,7 @@ async function fill(page, a) {
       const invalid = (await loc.getAttribute('aria-invalid').catch(() => '')) === 'true';
       if (now && !invalid && sameDate(now, a.iso)) { a.value = now; return; }
     }
+    if (await jqueryCalendar(page, a, loc)) return; // the calendar rewrote what was typed: choose in it instead
     throw new Error(`the date field did not accept ${a.iso} in any common format`);
   }
 
@@ -96,7 +147,21 @@ async function fill(page, a) {
 
 async function select(page, a) {
   const loc = where(page, a.target).locator(sel(a.target));
-  await loc.selectOption({ label: a.value });
+  try {
+    await loc.selectOption({ label: a.value }, { timeout: 4000 });
+  } catch {
+    // option texts often carry extra spaces or a trailing "*": pick the option whose words are the same
+    const norm = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const opts = await loc.locator('option').evaluateAll((os) => os.map((o) => ({ v: o.value, t: o.textContent || '' }))).catch(() => []);
+    const hit = opts.find((o) => norm(o.t) === norm(a.value)) || opts.find((o) => norm(o.v) === norm(a.value));
+    if (!hit) throw new Error(`no option "${a.value}" in the list`);
+    await loc.selectOption({ value: hit.v }, { timeout: 4000 });
+  }
+  // the site may reload the list after a choice (e.g. "Second choice" depends on "First choice")
+  const shown = await loc.evaluate((s) => s.options[s.selectedIndex]?.textContent || '').catch(() => '');
+  if (shown && String(shown).toLowerCase().replace(/[^a-z0-9]+/g, '') !== String(a.value).toLowerCase().replace(/[^a-z0-9]+/g, '')) {
+    throw new Error(`the list shows "${shown.trim()}" instead`);
+  }
 }
 
 // Some sites change the browser's built-in JavaScript, so running our own code on an element
@@ -212,7 +277,7 @@ async function click(page, a) {
   const text = ((await loc.innerText().catch(() => '')) || (await loc.inputValue().catch(() => ''))).trim();
 
   if ((SUBMIT_BUTTON.test(text) && !NEXT_BUTTON.test(text)) || SAVE_ONLY.test(text)) {
-    throw new Error(`refused to click "${text}" â€” final submission is the user's job`);
+    throw new Error(`refused to click "${text}" — final submission is the user's job`);
   }
   try {
     await loc.click({ timeout: 8000 });
@@ -242,11 +307,11 @@ async function execute(page, actions, log = console.log) {
     try {
       if (!handler) throw new Error(`unknown action "${a.action}"`);
       await handler(page, a);
-      log(`  âœ… ${shown}`);
+      log(`  ✅ ${shown}`);
       results.push({ ...a, ok: true });
     } catch (err) {
       const msg = err.message.split('\n')[0];
-      log(`  âŒ ${shown}  â†’  ${msg}`);
+      log(`  ❌ ${shown}  →  ${msg}`);
       results.push({ ...a, ok: false, error: msg });
     }
 

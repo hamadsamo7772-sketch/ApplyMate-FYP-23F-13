@@ -331,6 +331,10 @@ async function scanFrameOnce(frame, prefix) {
         f.filled = !!f.value;
       } else if (type === 'checkbox') {
         f.filled = el.checked;
+        // declarations are long: keep the whole statement so the student can read all of it in ApplyMate
+        const lab = (el.id && document.querySelector(`label[for="${CSS.escape(el.id)}"]`)) || el.closest('label') || up(el);
+        const whole = lab ? clean(lab.innerText || lab.textContent, 1200) : '';
+        if (whole.length > String(f.label || '').length + 10) f.fullText = whole;
       } else if (type === 'file') {
         // upload widgets empty the real input and show the file name in their own box
         f.filled = el.files.length > 0 || !!(anchor?.matches(FIELD) && anchor.value.trim());

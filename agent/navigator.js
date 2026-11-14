@@ -301,6 +301,13 @@ async function findForm(page, { ask, log = console.log, maxHops = 6, dismissCook
       continue;
     }
 
+    // the first step of a portal's application: one open choice ("Programme", "Call", "Scholarship") and Continue.
+    // That is the form itself: the agent fills the choice from the opportunity, then goes on.
+    const pick1 = choices.filter((f) => ['select', 'radio'].includes(f.kind));
+    if (startBtn && choices.length === 1 && pick1.length === 1 && !pick1[0].filled && (pick1[0].options || []).length >= 2) {
+      return { arrived: true, reason: 'form', closedNote, trail, entryUrl };
+    }
+
     const text = await page.evaluate(() => document.body.innerText.slice(0, 20000)).catch(() => '');
     if (!closedNote && CLOSED.test(text)) {
       closedNote = `This website says: “${text.match(CLOSED)[0]}”. Check the deadline before you finish.`;
@@ -398,4 +405,14 @@ async function findForm(page, { ask, log = console.log, maxHops = 6, dismissCook
   };
 }
 
-module.exports = { NOT_FORM, findForm, formFields, isFormPage, replay, snapshot, adoptNewTab };
+// opens a link or button found by candidates() (by address, or by clicking it)
+async function openCandidate(page, c) {
+  if (c.href) { await page.goto(c.href, { waitUntil: 'domcontentloaded' }).catch(() => {}); return true; }
+  for (const frame of page.frames()) {
+    const el = await frame.$(`[data-am-nav="${c.nav}"]`).catch(() => null);
+    if (el) { await el.click().catch(() => {}); return true; }
+  }
+  return false;
+}
+
+module.exports = { NOT_FORM, findForm, formFields, isFormPage, replay, snapshot, adoptNewTab, candidates, openCandidate, baseDomain };

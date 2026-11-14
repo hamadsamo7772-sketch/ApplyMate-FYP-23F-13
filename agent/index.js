@@ -16,10 +16,46 @@ const openBrowser = require('./browser');
 const scanPage = require('./scanner');
 const planActions = require('./planner');
 const execute = require('./executor');
-const { findForm, formFields, isFormPage, snapshot } = require('./navigator');
+const { findForm, formFields, isFormPage, snapshot, candidates, openCandidate, baseDomain } = require('./navigator');
 const { fillEntries, addButtonOf } = require('./entries');
 
-const MAX_STEPS = 25;
+const MAX_STEPS = 30;
+
+// ---- remembered form decisions (NFR-P10): question -> profile key or "ask the student", never a value ----
+const DECISIONS_FILE = path.join(__dirname, '.browser-data', 'form-decisions.json');
+const hostOf = (u) => { try { return new URL(u).host; } catch { return ''; } };
+function loadDecisions(host) {
+  try { return JSON.parse(fs.readFileSync(DECISIONS_FILE, 'utf8'))[host] || {}; } catch { return {}; }
+}
+function saveDecisions(host, cache) {
+  if (!host) return;
+  const keep = {};
+  for (const [id, d] of Object.entries(cache || {})) {
+    if (typeof d === 'string' && d !== 'none') keep[id] = d;          // a profile key
+    else if (d && d.key) keep[id] = { key: d.key };
+    else if (d && d.ask) keep[id] = { ask: true };                    // AI answers (values) are never stored
+  }
+  let all = {};
+  try { all = JSON.parse(fs.readFileSync(DECISIONS_FILE, 'utf8')); } catch {}
+  all[host] = { ...(all[host] || {}), ...keep };
+  try { fs.mkdirSync(path.dirname(DECISIONS_FILE), { recursive: true }); fs.writeFileSync(DECISIONS_FILE, JSON.stringify(all, null, 1)); } catch {}
+}
+
+// ---- portal accounts: the agent creates the account with the student, never handles the password ----
+const isLive = (url) => /^https?:/i.test(url || '') && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(url || '');
+const LOGIN_BTN = /^(log ?in|sign ?in|login)\b/i;
+// "Create account", "Register", "Sign up", "New applicant", "Don't have an account? Register here"
+const ACCOUNT_LINK = /create (an |a new |your |my )?account|\bregister\b|sign ?up|new (user|applicant)|don.?t have an account|first time (user|here|applicant)/i;
+const CREATE_BTN = /create (an |my |your )?account|\bregister\b|sign ?up/i;
+const plainOf = (scan) => scan.fields.filter((f) => !['password', 'checkbox'].includes(f.kind) && !/search|filter|service name|help library/i.test(`${f.label} ${f.hint || ''}`));
+// what kind of account page this is: 'login', 'sign-up' or ''
+function accountPage(scan) {
+  const pw = scan.fields.filter((f) => f.kind === 'password');
+  if (!pw.length || !isLive(scan.url)) return '';
+  if (plainOf(scan).length <= 2 && pw.length === 1 && scan.buttons.some((b) => LOGIN_BTN.test(b.text))) return 'login';
+  if (pw.length >= 2 || scan.buttons.some((b) => CREATE_BTN.test(b.text)) || plainOf(scan).length >= 3) return 'sign-up';
+  return '';
+}
 
 // Portals where the student already has an account (kept with the browser data, on this computer)
 const ACCOUNTS_FILE = path.join(__dirname, '.browser-data', 'applymate-accounts.json');
@@ -214,6 +250,13 @@ async function runAgent(target, options = {}) {
   if (!(await navigate())) finalStop = { reason: 'stopped-by-user' };
 
   for (let step = 1; step <= MAX_STEPS && !finalStop; step++) {
+    // the form is known: reuse what earlier runs decided on it, so the model is asked almost nothing
+    if (stats.formUrl && !memory.decisionsLoaded) {
+      memory.decisionsLoaded = true;
+      const known = loadDecisions(hostOf(stats.formUrl));
+      memory.keyCache = { ...known, ...(memory.keyCache || {}) };
+      if (Object.keys(known).length) log(`  🧠 Remembered ${Object.keys(known).length} decisions from earlier runs on this form`);
+    }
     if (page.isClosed()) { finalStop = { reason: 'browser-closed' }; break; }
     stats.steps = step;
     await settle(page);
@@ -227,7 +270,7 @@ async function runAgent(target, options = {}) {
     // e.g. after the student logged in, the portal shows a dashboard: go on to the application
     const hasNext = scan.buttons.some((b) => !b.disabled && /^(next|continue|proceed|next step|save (and|&) (continue|next))\b/i.test(b.text));
     // a wizard step with nothing to fill but a Next button (e.g. HEC "Employment Details"): just go on
-    if (!formFields(scan).length && !scan.fields.some((f) => f.kind === 'password') && !addButtonOf(scan) && !inApplication && !(hasNext && stats.formUrl) && !(stats.formUrl && formFields(scan).length + scan.fields.filter((f) => f.kind === 'checkbox').length > 0) && navigations < 3) {
+    if (!formFields(scan).length && !scan.fields.some((f) => f.kind === 'password') && !addButtonOf(scan) && !inApplication && !(hasNext && stats.formUrl) && !(stats.formUrl && formFields(scan).length + scan.fields.filter((f) => f.kind === 'checkbox').length > 0) && navigations < 4 && !memory.account?.created) {
       if (!(await navigate())) { finalStop = { reason: 'stopped-by-user' }; break; }
       await settle(page);
       scan = await scanPage(page);
@@ -236,6 +279,53 @@ async function runAgent(target, options = {}) {
     const host = /^https?:/.test(scan.url) ? new URL(scan.url).hostname : '';
     if (scan.fields.some((f) => f.kind === 'password')) passwordHost = host;
     else if (host && host === passwordHost) { rememberAccount(host); passwordHost = ''; }
+    // ---- the account step ----
+    memory.account ||= {};
+    const acc = accountPage(scan);
+    // just created an account: the student confirms the email, then the agent goes back to sign in
+    if (memory.account.created && !acc && formFields(scan).length < 2) {
+      const created = memory.account.created;
+      memory.account.created = '';
+      log(`\n⏸  VERIFY-EMAIL: waiting for you to confirm the new account on ${created}`);
+      stats.pauses.push('verify-email');
+      const ok = await onPause({ kind: 'action', reason: 'verify-email',
+        message: `If ${created} sent you an email, open it and click the confirmation link (or type the code it asks for). ` +
+          'Then press continue: the agent goes back to the sign-in page, you log in, and it finds the application by itself.' });
+      if (!ok) { finalStop = { reason: 'stopped-by-user' }; break; }
+      rememberAccount(created);
+      await settle(page);
+      const now = await scanPage(page);
+      if (memory.account.loginUrl && !now.fields.some((f) => f.kind === 'password') && formFields(now).length < 2) {
+        log(`  🔑 Back to the sign-in page → ${memory.account.loginUrl}`);
+        await page.goto(memory.account.loginUrl, { waitUntil: 'domcontentloaded' }).catch(() => {});
+      }
+      navigations = Math.min(navigations, 2); // the agent may search for the application again after login
+      continue;
+    }
+    // a sign-in page of a portal where this student has no account yet: ask once
+    if (acc === 'login' && host && !hasAccount(host) && !memory.account.asked?.[host]) {
+      memory.account.asked = { ...memory.account.asked, [host]: true };
+      memory.account.loginUrl = scan.url;
+      const link = (await candidates(page)).find((c) => c.text && ACCOUNT_LINK.test(c.text) && !/forgot|reset|help/i.test(c.text) &&
+        (!c.href || baseDomain(c.href) === baseDomain(scan.url)));
+      if (link) {
+        log(`\n⏸  ACCOUNT: does the student have an account on ${host}?`);
+        stats.pauses.push('account');
+        const create = await onPause({ kind: 'confirm', reason: 'account', yes: 'Create one for me', no: 'I already have an account',
+          message: `${host} asks you to sign in. Do you already have an account there? If not, the agent opens “${link.text}” and fills ` +
+            'the sign-up form from your profile. You only type the password yourself: the agent never sees or stores it.' });
+        if (create) {
+          log(`  🆕 No account yet: opening “${link.text}” to create one`);
+          await openCandidate(page, link);
+          await page.waitForTimeout(1500);
+          memory.account.signingUp = host;
+          continue;
+        }
+        log('  🔑 You already have an account: sign in, and the agent continues');
+      }
+    }
+    if (acc === 'sign-up') memory.account.signingUp = host;
+
     const pageSig = `${scan.url}|${scan.buttons.map((b) => b.text).join(',')}`;
     if (memory.lastSig && memory.lastSig !== pageSig && !addButtonOf(scan)) memory.entriesDone = false;
     memory.lastSig = pageSig;
@@ -278,6 +368,19 @@ async function runAgent(target, options = {}) {
     const plan = await planActions(scan, profile, memory, timedAsk);
     for (const n of plan.notes) log(`  ℹ ${n}`);
 
+    // on a sign-up page the agent fills what it knows; the password, the terms and "Create account" are the student's
+    if (acc === 'sign-up' && plan.stop && ['needs-user', 'ready-to-submit', 'no-next-step', 'captcha', 'errors'].includes(plan.stop.reason)) {
+      const btn = scan.buttons.find((b) => CREATE_BTN.test(b.text) || (b.type === 'submit' && !LOGIN_BTN.test(b.text)));
+      const left = plan.stop.reason === 'errors' ? plan.stop.message : '';
+      plan.stop = {
+        reason: 'create-account',
+        message: `The agent filled the sign-up form on ${host} from your profile. Now, in the browser window: ` +
+          `type a password of your choice${scan.fields.filter((f) => f.kind === 'password').length > 1 ? ' (twice)' : ''}, ` +
+          'tick the terms if you agree, solve the “I’m not a robot” check if there is one, ' +
+          `and press “${btn?.text || 'Create account'}”. Then press continue here.` + (left ? `\n${left}` : ''),
+      };
+    }
+
     // ---- the agent has to stop: hand control to the user ----
     if (plan.stop) {
       log(`\n⏸  ${plan.stop.reason.toUpperCase()}: ${plan.stop.message}`);
@@ -296,12 +399,18 @@ async function runAgent(target, options = {}) {
 
       const goOn = await onPause(plan.stop);
       if (!goOn) { finalStop = { reason: 'stopped-by-user' }; break; }
+      if (plan.stop.reason === 'create-account') { memory.account.created = host; lastPause = ''; }
       // answers typed in ApplyMate: used right away (the server also saved them in the profile)
       if (Array.isArray(goOn)) {
         const { normalizeQ } = require('./answers');
-        profile.answers = [...(profile.answers || []).filter((a) => !goOn.some((n) => normalizeQ(n.label) === a.q)),
-          ...goOn.map((a) => ({ ...a, q: normalizeQ(a.label) }))];
-        log(`  ✍ You answered ${goOn.length} question${goOn.length === 1 ? '' : 's'}; saved in your profile for the next forms`);
+        // declarations the student agreed to in ApplyMate: ticked on this form only, never saved in the profile
+        const agreed = goOn.filter((a) => a.kind === 'consent');
+        const given = goOn.filter((a) => a.kind !== 'consent');
+        memory.consented = [...(memory.consented || []), ...agreed.map((a) => normalizeQ(a.label))];
+        profile.answers = [...(profile.answers || []).filter((a) => !given.some((n) => normalizeQ(n.label) === a.q)),
+          ...given.map((a) => ({ ...a, q: normalizeQ(a.label) }))];
+        if (given.length) log(`  ✍ You answered ${given.length} question${given.length === 1 ? '' : 's'}; saved in your profile for the next forms`);
+        if (agreed.length) log(`  ✍ You agreed to ${agreed.length} declaration${agreed.length === 1 ? '' : 's'}; the agent ticks ${agreed.length === 1 ? 'it' : 'them'} on this form`);
         lastPause = '';
       }
       memory.attempts = {}; // the user may have fixed things; allow fresh tries
@@ -336,14 +445,19 @@ async function runAgent(target, options = {}) {
     stats.actions += results.length;
     stats.ok += results.filter((r) => r.ok).length;
     stats.failed.push(...results.filter((r) => !r.ok).map((r) => `${r.label}: ${r.error}`));
+    memory.lastError ||= {};
     for (const r of results) {
       if (!r.ok && /^no option/.test(r.error)) memory.attempts[r.target] = 99; // retrying won't help
+      if (!r.ok) memory.lastError[r.target] = r.error; // shown to the student when they are asked about this field
+      if (r.ok) (memory.filledOk ||= {})[r.target] = (memory.filledOk[r.target] || 0) + 1; // a box filled again and again is being cleared by the site
     }
 
     if (actions.some((a) => a.action === 'click')) await settle(page);
   }
 
   if (!finalStop) finalStop = { reason: 'max-steps', message: `Stopped after ${MAX_STEPS} steps.` };
+
+  if (stats.formUrl) saveDecisions(hostOf(stats.formUrl), memory.keyCache);
 
   // ---- summary (also saved to runs/ for the evaluation chapter; no personal values) ----
   const summary = {

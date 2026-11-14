@@ -1,6 +1,6 @@
 {
   "name": "applymate",
-  "version": "1.3.0",
+  "version": "1.4.2",
   "private": true,
   "description": "ApplyMate: AI-driven platform for automated scholarship and job applications (FYP 23F-13)",
   "type": "commonjs",

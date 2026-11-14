@@ -32,8 +32,8 @@ function columns(list) {
 
 const FILTERS = {
   scholarship: [
-    ['suitable', 'Suitable for you'],
-    ['all', 'All scholarships'],
+    ['suitable', 'Suitable for me'],
+    ['all', 'All'],
     ['official', 'Official programmes'],
     ['erasmus', 'Erasmus Mundus'],
     ['strong', 'Strong matches'],
@@ -115,11 +115,11 @@ export default function Opportunities({ type }) {
     <div>
       <div className="page-head">
         <div>
-          <h1>{isJob ? 'Jobs' : 'Scholarships'}</h1>
+          <h1>{isJob ? 'Jobs for you' : 'Scholarships for you'}</h1>
           <p>
             {isJob
               ? 'Jobs ranked against your skills, job title and preferred cities.'
-              : 'Fulbright, Chevening, Stipendium Hungaricum, DAAD and Erasmus Mundus, ranked against your level and field.'}
+              : 'Pick one and press Apply. The agent fills the real form for you.'}
           </p>
         </div>
         {!isJob && (
@@ -174,7 +174,7 @@ export default function Opportunities({ type }) {
         <div className="sch-board">
           {columns(shown).map(([id, label, items]) => (
             <section key={id} className={`board-col board-${id}`} aria-label={label}>
-              <h2 className="board-head">{label}<span className="board-count">{items.length}</span></h2>
+              <h2 className="board-head"><span className="board-dot" />{label}<span className="board-count">{items.length}</span></h2>
               {items.length === 0
                 ? <p className="small muted board-empty">Nothing here for this search or filter.</p>
                 : items.map((o) => (
@@ -257,45 +257,56 @@ export function OppCard({ o, saved, onSave, onApply, onRemove }) {
   );
 }
 
+// a plain-word label next to the fit score, so everyone understands it at a glance
+export function matchLabel(o) {
+  if (o.match.suitable === false) return ['Not suitable', 'ml-no'];
+  const s = o.match.score;
+  return s >= 75 ? ['Great match', 'ml-great'] : s >= 50 ? ['Good match', 'ml-good'] : ['Low match', 'ml-low'];
+}
+const daysLeft = (d) => (d ? Math.ceil((new Date(d).getTime() - Date.now()) / 86400000) : null);
+
 function BoardCard({ o, column, saved, onSave, onApply }) {
   const navigate = useNavigate();
   const score = o.match.score;
   const open = column === 'open';
   const [checkLabel, checkCls] = (open && FORM_CHECK[o.formCheck?.result]) || [];
+  const [ml, mlCls] = matchLabel(o);
+  const left = open ? daysLeft(o.closesAt) : null;
   const when = open
-    ? o.deadline
+    ? left != null && left >= 0 ? `Closes ${fmtDate(o.closesAt)} · ${left} day${left === 1 ? '' : 's'} left` : o.deadline
     : column === 'upcoming'
       ? o.opensAt ? `Opens ${fmtDate(o.opensAt)}` : o.deadline
       : o.statusNote || o.deadline;
   const stop = (fn) => (e) => { e.stopPropagation(); fn(o); };
 
   return (
-    <article className="panel board-card" onClick={() => navigate(`/app/opportunities/${o._id}`)}>
+    <article className="board-card" onClick={() => navigate(`/app/opportunities/${o._id}`)}>
       <div className="board-card-top">
-        <Link to={`/app/opportunities/${o._id}`} className="opp-title" onClick={(e) => e.stopPropagation()}>{o.title}</Link>
-        <strong className={`board-score ${score >= 70 ? 'score-high' : score >= 40 ? 'score-mid' : 'score-low'}`} title="Fit with your profile">{score}%</strong>
-      </div>
-      <div className="opp-meta">
-        {o.org && <span><Icon name="cap" size={15} />{o.org}</span>}
-        {o.location && <span><Icon name="globe" size={15} />{o.location}</span>}
-        {o.level && <span>{o.level}</span>}
-      </div>
-      {when && <div className="board-when small"><Icon name="clock" size={14} />{when}</div>}
-      {(checkLabel || o.match.suitable === false) && (
-        <div className="opp-top">
-          {checkLabel && <span className={`tag ${checkCls}`}>{checkLabel}</span>}
-          {o.match.suitable === false && <span className="tag tag-red" title={o.match.blockers.join('; ')}>Not suitable</span>}
+        <div style={{ minWidth: 0 }}>
+          <Link to={`/app/opportunities/${o._id}`} className="opp-title" onClick={(e) => e.stopPropagation()}>{o.title}</Link>
+          <div className="board-sub">{[o.location, o.level].filter(Boolean).join(' · ')}</div>
         </div>
-      )}
-      <div className="board-actions">
-        {open ? (
-          <button className="btn btn-primary btn-sm" onClick={stop(onApply)}><Icon name="bolt" size={15} /> Apply with agent</button>
-        ) : (
-          <button className="btn btn-secondary btn-sm" onClick={stop(onSave)}>
-            <Icon name={saved ? 'bookmarkFilled' : 'bookmark'} size={15} /> {saved ? 'In tracker' : 'Save to tracker'}
-          </button>
+        {column !== 'closed' && (
+          <div className="board-fit" title="How well this fits your profile">
+            <strong className={score >= 70 ? 'score-high' : score >= 40 ? 'score-mid' : 'score-low'}>{score}%</strong>
+            <span className={`match-label ${mlCls}`}>{ml}</span>
+          </div>
         )}
       </div>
+      {when && <div className={`board-when ${open && left != null && left <= 14 ? 'soon' : ''} ${column}`}>{when}</div>}
+      {checkLabel && <div className="opp-top"><span className={`tag ${checkCls}`}>{checkLabel}</span></div>}
+      {column !== 'closed' && (
+        <div className="board-actions">
+          {open ? (
+            <button className="btn btn-primary" onClick={stop(onApply)}><Icon name="bolt" size={15} /> Apply with agent</button>
+          ) : (
+            <button className="btn btn-secondary" onClick={stop(onSave)}>
+              <Icon name={saved ? 'check' : 'bell'} size={15} /> {saved ? 'We will remind you' : 'Remind me'}
+            </button>
+          )}
+          <Link to={`/app/opportunities/${o._id}`} className="btn btn-secondary btn-details" onClick={(e) => e.stopPropagation()}>Details</Link>
+        </div>
+      )}
     </article>
   );
 }

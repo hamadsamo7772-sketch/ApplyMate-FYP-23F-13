@@ -667,6 +667,8 @@ async function planActions(scan, profile, memory, ask) {
   const problem = (f, msg) =>
     f.required ? needsUser.push(`"${nameOf(f)}" (${msg})`) : notes.push(`Left empty: "${nameOf(f)}" (${msg})`);
 
+  const consents = []; // declarations the student must agree to (asked in ApplyMate, below)
+
   // Passwords and one-time codes are never filled by the agent
   const personalOnly = (f) => f.kind === 'password' || CODE_FIELD.test(`${f.label} ${f.hint || ''}`);
   for (const f of safe.filter(personalOnly)) {
@@ -683,8 +685,12 @@ async function planActions(scan, profile, memory, ask) {
       continue;
     }
     if (CONSENT.test(f.label) && !MARKETING.test(f.label)) {
-      if (live) problem(f, 'read it and tick it yourself');
-      else actions.push({ action: 'check', target: f.id, label: f.label });
+      // on a real website the student reads the statement in ApplyMate and agrees there; the agent then ticks it.
+      // Agreement holds for this run only (it is never saved in the profile).
+      if (live && !memory.consented?.includes(normalizeQ(f.label))) {
+        if (f.required) consents.push(f);
+        else notes.push(`Left unticked: "${nameOf(f)}" (optional declaration)`);
+      } else actions.push({ action: 'check', target: f.id, label: f.label, ...(live ? { why: 'you agreed in ApplyMate' } : {}) });
     } else {
       notes.push(`Skipped checkbox "${f.label}"`);
     }
@@ -719,10 +725,30 @@ async function planActions(scan, profile, memory, ask) {
     }
   }
 
+  // Choice lists ("First choice".."Eighth choice" of one semester): sites allow each option ONCE per list and
+  // silently clear the other box when it is chosen twice, so the agent would refill them forever.
+  // In page order, the first box keeps an option; a later box with the same option is asked again.
+  const choiceKinds = ['select', 'radio', 'dropdown'];
+  const listOf = (f) => (isPreference(f) && choiceKinds.includes(f.kind) ? f.section || '(page)' : null);
+  const taken = {};  // list -> normalized option -> { value, by }
+  const clash = {};  // field id -> { value, by }
+  for (const f of scan.fields) {
+    const g = listOf(f);
+    if (!g) continue;
+    const v = String(answerFor(profile, f)?.value || (f.filled ? f.value : '') || '');
+    if (!v) continue;
+    taken[g] ||= {};
+    const prev = taken[g][normalizeQ(v)];
+    if (prev && prev.id !== f.id) clash[f.id] = { value: v, by: prev.by };
+    else taken[g][normalizeQ(v)] = { id: f.id, value: v, by: f.label };
+  }
+  const takenFor = (f) => Object.values(taken[listOf(f)] || {}).filter((t) => t.id !== f.id).map(({ value, by }) => ({ value, by }));
+
   // questions only the student can answer: required ones stop the agent, optional ones are offered too
   const questions = [];
-  const unresolved = (f, msg) => {
+  const unresolved = (f, msg, extra = {}) => {
     questions.push({
+      ...(listOf(f) ? { taken: takenFor(f) } : {}), ...extra,
       id: f.id, label: f.qLabel || f.label, hint: f.hint || '', required: !!f.required, reason: msg,
       kind: f.kind === 'file' ? 'file' : ['select', 'radio', 'dropdown'].includes(f.kind) && f.options?.length ? 'choice' : f.kind === 'textarea' || isEssay(f) ? 'long' : 'text',
       options: (f.options || []).map((o) => (typeof o === 'string' ? o : o.label)).filter((o) => o && !/please (make|select|choose)|^-+$|^select\b|^choose\b/i.test(o)).slice(0, 300),
@@ -732,6 +758,10 @@ async function planActions(scan, profile, memory, ask) {
   // 3. Turn decisions into actions with real values
 
   for (const f of others) {
+    if (clash[f.id]) {
+      unresolved(f, `“${clash[f.id].value}” is already your ${clash[f.id].by}: each option can be chosen only once in this list`, { clear: true });
+      continue;
+    }
     const saved = answerFor(profile, f);
     // "Language 1".."Language 5", "Name referee 1": item 1 of the profile's list goes into field 1, and so on
     if (!saved && numbered(f)) {
@@ -826,7 +856,29 @@ async function planActions(scan, profile, memory, ask) {
     }
   }
 
-  for (const f of stuck) problem(f, 'could not fill it, see the error above');
+  // fields the agent tried twice and could not fill: ask the student in ApplyMate; their answer is tried next.
+  // Passwords and codes stay in the browser window.
+  for (const f of stuck) {
+    if (personalOnly(f) || HONEYPOT.test(`${f.label} ${f.hint || ''}`) || SITE_TOOL.test(`${f.label} ${f.hint || ''}`)) continue;
+    if (f.kind === 'checkbox') {
+      if (f.required) needsUser.push(`"${nameOf(f)}" (tick it in the browser window: the agent could not)`);
+      continue;
+    }
+    if (questions.some((q) => q.id === f.id)) continue; // already asked above
+    if (clash[f.id]) {
+      unresolved(f, `“${clash[f.id].value}” is already your ${clash[f.id].by}: each option can be chosen only once in this list`, { clear: true });
+      continue;
+    }
+    const err = memory.lastError?.[f.id] || (f.options || []).map((o) => memory.lastError?.[o.id]).find(Boolean);
+    const cleared = !err && memory.filledOk?.[f.id] >= 2; // chosen fine, but the site emptied it again
+    if (f.required) unresolved(f, err ? `the agent could not fill it (${err}): please answer again`
+      : cleared ? 'the agent could not fill it: the site keeps clearing this answer, probably because it clashes with another one. Please choose again'
+      : 'the agent could not fill it: please answer here', cleared ? { clear: true } : {});
+    else notes.push(`Left empty: "${nameOf(f)}" (could not fill it)`);
+  }
+  for (const f of consents) {
+    questions.push({ id: f.id, label: f.label, text: f.fullText || '', hint: f.hint || '', required: true, kind: 'consent', reason: 'needs your agreement', options: [] });
+  }
 
   // Count attempts, so a field that refuses to fill doesn't loop forever
   for (const a of actions) {
@@ -843,8 +895,9 @@ async function planActions(scan, profile, memory, ask) {
       actions, notes, needsUser, questions,
       stop: {
         reason: 'questions', kind: 'questions', questions,
-        message: `This page asks ${req.length} required question${req.length === 1 ? '' : 's'} your profile cannot answer yet. ` +
+        message: `This page needs ${req.length} answer${req.length === 1 ? '' : 's'} from you. ` +
           'Answer below: your answers are saved in your profile and used on every form that asks the same.' +
+          (questions.some((q) => q.kind === 'consent') ? ' Declarations you agree to are ticked on this form only.' : '') +
           (needsUser.length ? `\nAlso do these in the browser window:\n- ${needsUser.join('\n- ')}` : ''),
       },
     };

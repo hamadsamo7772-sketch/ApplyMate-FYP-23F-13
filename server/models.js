@@ -157,7 +157,7 @@ const applicationSchema = new mongoose.Schema(
     // running -> waiting (needs user) -> ready (user submits) / stopped / incomplete / failed
     status: { type: String, default: 'running' },
     log: [String],
-    pause: { kind: String, reason: String, message: String, questions: Array },
+    pause: { kind: String, reason: String, message: String, questions: Array, yes: String, no: String },
     result: { message: String, summary: Object },
   },
   { timestamps: true }

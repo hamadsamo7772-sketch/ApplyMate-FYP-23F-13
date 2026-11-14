@@ -14,6 +14,7 @@
 2. **Only suitable scholarships:** official programmes (Fulbright, Chevening, Stipendium Hungaricum via HEC, Erasmus Mundus, DAAD) on a board *Open now / Opening soon / Deadline passed*, matched to the student's level and field with a fit score.
 3. **Details page** with requirements, documents, deadlines and a *Before you apply* checklist.
 4. **AI agent:** opens the official website, finds the application form by itself, fills every page from the profile, asks the student only for passwords, CAPTCHAs, essays and preferences, and **never submits** the application itself.
+   If the student has no account on the portal yet, the agent opens *Register*, fills the sign-up form from the profile, waits while the student types the password and confirms the email, then signs in with them, opens *New application*, picks the right programme and carries on.
 5. **Private:** the AI runs offline (qwen3:4b via Ollama) on the student's computer.
 6. Application tracker, deadline reminders, notifications, and the *Ask ApplyMate* chatbot.
 
@@ -48,13 +49,13 @@ A unified AI-driven platform for automated scholarship and job applications.
 |---|---|
 | Sign up / log in (hashed passwords, JWT) | `/signup`, `/login` |
 | One profile + documents (CV, transcript, CNIC copy, photo) | Profile & documents |
-| **CV import:** the offline AI reads your CV and pre-fills the profile; you review each value | Profile â†’ Documents & CV import |
+| **CV import:** the offline AI reads your CV and pre-fills the profile; you review each value | Profile → Documents & CV import |
 | Separate **Scholarships** and **Jobs** sections, ranked against your profile with reasons | Scholarships, Jobs |
 | Fulbright, Chevening, Stipendium Hungaricum, DAAD (official catalogue), Erasmus Mundus (live EU catalogue), Rozee.pk (add by link) | Scholarships, Jobs |
-| **Explicit permission** dialog before the agent fills any form | â€œApply with agentâ€ |
+| **Explicit permission** dialog before the agent fills any form | “Apply with agent” |
 | **AI agent** fills the form field by field with live progress; pauses for essays, CAPTCHAs, missing data, uploads; never submits | Agent run page |
-| **Application tracker:** Saved â†’ In progress â†’ Ready â†’ Submitted â†’ Interview â†’ Decision, with notes, deadlines, history | Application tracker |
-| **Notifications:** bell for â€œagent needs youâ€, â€œform readyâ€, deadline reminders (7 days); optional **email** | Bell, Profile â†’ Notifications |
+| **Application tracker:** Saved → In progress → Ready → Submitted → Interview → Decision, with notes, deadlines, history | Application tracker |
+| **Notifications:** bell for “agent needs you”, “form ready”, deadline reminders (7 days); optional **email** | Bell, Profile → Notifications |
 | **Ask ApplyMate chatbot:** answers only about the scholarships and jobs on the portal (RAG: finds the matching listings in MongoDB, the offline model answers from them only, cites them as cards, refuses off-topic questions) | Chat button, bottom-right |
 | Dashboard: profile completeness, best matches, deadlines, recent runs | Home |
 | Landing page for visitors | `/` |
@@ -63,14 +64,14 @@ A unified AI-driven platform for automated scholarship and job applications.
 
 ```
 applymate/
-â”œâ”€â”€ agent/            the form-filling agent (scanner â†’ planner â†’ executor loop)
-â”‚   â”œâ”€â”€ test-forms/   local demo portals (also served at http://localhost:5000/demo/...)
-â”‚   â””â”€â”€ runs/         one JSON log per agent run (for the evaluation chapter)
-â”œâ”€â”€ server/           Express API + MongoDB (auth, profile, opportunities, applications)
-â”‚   â”œâ”€â”€ catalog/      programs.js: Fulbright, Chevening, Stipendium Hungaricum, DAAD
-â”‚   â”œâ”€â”€ chat.js       the Ask ApplyMate chatbot (retrieve listings â†’ offline model â†’ cited answer)
-â”‚   â””â”€â”€ scrapers/     official-status (dates + live check), erasmus (EACEA RSS), job-link (Rozee links)
-â””â”€â”€ client/           React web app (Vite)
+├── agent/            the form-filling agent (scanner → planner → executor loop)
+│   ├── test-forms/   local demo portals (also served at http://localhost:5000/demo/...)
+│   └── runs/         one JSON log per agent run (for the evaluation chapter)
+├── server/           Express API + MongoDB (auth, profile, opportunities, applications)
+│   ├── catalog/      programs.js: Fulbright, Chevening, Stipendium Hungaricum, DAAD
+│   ├── chat.js       the Ask ApplyMate chatbot (retrieve listings → offline model → cited answer)
+│   └── scrapers/     official-status (dates + live check), erasmus (EACEA RSS), job-link (Rozee links)
+└── client/           React web app (Vite)
 ```
 
 ## Setup (Windows, once)
@@ -125,7 +126,7 @@ For Erasmus Mundus programmes these are read from the programme's own website (`
 home page + up to 3 linked pages such as Admissions / Scholarships), cached for 3 days.
 
 **The agent finds the form by itself** (`agent/navigator.js`): it starts on the programme's website and follows
-"Admissions â†’ How to apply â†’ Apply online â†’ portal" links. Clear cases are decided by rules; when several links are
+"Admissions → How to apply → Apply online → portal" links. Clear cases are decided by rules; when several links are
 equally good, the offline model picks one (it sees only link texts). It remembers on which portals the student already
 has an account, so it goes to "Sign in" there and to "Create an account" on new portals.
 
@@ -154,11 +155,11 @@ Log in / open the form in the window that opens, press Enter, and the field list
 
 ## HEC Scholarship Portal (Stipendium Hungaricum and other HEC-nominated scholarships)
 
-Pakistani students apply first on `scholarship.hec.gov.pk`. Recorded route: dashboard â†’ **Hungarian Scholarship Program**.
+Pakistani students apply first on `scholarship.hec.gov.pk`. Recorded route: dashboard → **Hungarian Scholarship Program**.
 The agent then fills **Profile** (name, marital status, gender, date of birth, father's name, addresses, domicile,
-country / city / postal code) and **Education**: for every degree in *Profile â†’ Education history* (Matric,
+country / city / postal code) and **Education**: for every degree in *Profile → Education history* (Matric,
 Intermediate, Bachelor's, Master's) that is not listed yet it clicks **Add Education**, fills the 4-step pop-up
-(level, dates, name on degree â†’ country, city, board, school, sector, programme, discipline â†’ roll number â†’
+(level, dates, name on degree → country, city, board, school, sector, programme, discipline → roll number →
 marks or CGPA, "Incomplete Education" for a degree in progress) and saves it, then continues with **NEXT STEP**.
 It handles Angular Material dropdowns (with search boxes) and calendar dates (tries the formats until one is accepted).
 It never clicks the final Submit.
@@ -166,16 +167,16 @@ It never clicks the final Submit.
 ## DAAD scholarships: the complete flow
 
 ApplyMate lists the DAAD programmes for Pakistani applicants (from DAAD Pakistan's official list): EPOS,
-Helmut-Schmidt-Programme, Study Scholarships in Fine Art / Design / Film, Research Grants â€“ Doctoral Programmes, and
+Helmut-Schmidt-Programme, Study Scholarships in Fine Art / Design / Film, Research Grants – Doctoral Programmes, and
 Bi-nationally Supervised Doctoral Degrees. All of them are applied for in the **DAAD Portal**:
 
-`portal.daad.de` â†’ student signs in â†’ **Personal Funding â†’ Application** â†’ selection page (funding programme,
-country of residence, target country, status) â†’ online form pages â†’ attachments â†’ **Send** (by the student).
+`portal.daad.de` → student signs in → **Personal Funding → Application** → selection page (funding programme,
+country of residence, target country, status) → online form pages → attachments → **Send** (by the student).
 
 - The agent fills the selection page from the scholarship itself (`portal` in `programs.js`) and the profile.
 - Fields common on international forms (place of birth, passport, mother tongue, degree dates, best possible grade,
-  motivation â€¦) are matched by fixed rules first (`LABEL_RULES` in `agent/planner.js`), the offline model does the rest.
-- Motivation / career-plan texts are written once in **Profile â†’ Statements** and reused (length limits are checked).
+  motivation …) are matched by fixed rules first (`LABEL_RULES` in `agent/planner.js`), the offline model does the rest.
+- Motivation / career-plan texts are written once in **Profile → Statements** and reused (length limits are checked).
 - It reads forms inside frames and SAP UI5 components, waits for slow portal pages, and follows new tabs.
 
 ### Teach the route once (ApplyMate team)
@@ -183,7 +184,7 @@ country of residence, target country, status) â†’ online form pages â†�
 npm run teach -- daad-fine-art
 ```
 1. Log in in the window that opens, press Enter.
-2. Click to the application form as a student would (Personal Funding â†’ Application â†’ choose programme â†’ Continue).
+2. Click to the application form as a student would (Personal Funding → Application → choose programme → Continue).
 3. On each form page press Enter (field names are read, never values), then type `done`.
 
 The route is saved in `server/catalog/routes.json` and replayed for every student (restart the server).
@@ -193,7 +194,7 @@ Programme keys: `erasmus-deai` (Erasmus Mundus DEAI, open to Pakistani students 
 ## Email notifications (optional)
 
 The bell works without any setup. To also get emails, use a Gmail **App password**
-(Google Account â†’ Security â†’ 2-Step Verification â†’ App passwords) and add to `.env`:
+(Google Account → Security → 2-Step Verification → App passwords) and add to `.env`:
 
 ```
 SMTP_HOST=smtp.gmail.com
@@ -203,20 +204,20 @@ SMTP_PASS=the-16-letter-app-password
 MAIL_FROM="ApplyMate <yourname@gmail.com>"
 ```
 
-Restart the server, then Profile â†’ Notifications â†’ turn on email â†’ â€œSend a test emailâ€.
+Restart the server, then Profile → Notifications → turn on email → “Send a test email”.
 
 ## Demo checklist (Mid-Defense)
 
 1. MongoDB service running, Ollama running (`ollama ps` should list qwen3:4b after the first call).
 2. `npm run server`, open http://localhost:5000.
-3. Sign up â†’ Profile â†’ Documents: upload `agent/documents/sample-cv.pdf` â†’ **Import from CV** â†’ review â†’ use values.
+3. Sign up → Profile → Documents: upload `agent/documents/sample-cv.pdf` → **Import from CV** → review → use values.
 4. Fill the remaining fields (gender, expected salary, scholarship level, field of study), upload `transcript.pdf`.
-5. Scholarships â†’ **Check for new scholarships** (loads Erasmus Mundus) â†’ save Chevening to the tracker.
-6. Jobs â†’ paste a real Rozee job link â†’ it is ranked.
-7. **Apply with agent** on the demo job â†’ permission dialog â†’ watch it fill â†’ â€œReady for you to submitâ€.
-8. Demo scholarship â†’ agent pauses for the Statement of Purpose â†’ type it in the browser â†’ â€œIâ€™ve done it, continueâ€.
-9. Tracker: open a card, set a deadline within 7 days â†’ the bell shows a reminder on Home.
-10. Chat button â†’ â€œWhich scholarships fit my profile?â€ â†’ answer with listing cards; then ask something off-topic (â€œWhat is the capital of France?â€) â†’ polite refusal.
+5. Scholarships → **Check for new scholarships** (loads Erasmus Mundus) → save Chevening to the tracker.
+6. Jobs → paste a real Rozee job link → it is ranked.
+7. **Apply with agent** on the demo job → permission dialog → watch it fill → “Ready for you to submit”.
+8. Demo scholarship → agent pauses for the Statement of Purpose → type it in the browser → “I’ve done it, continue”.
+9. Tracker: open a card, set a deadline within 7 days → the bell shows a reminder on Home.
+10. Chat button → “Which scholarships fit my profile?” → answer with listing cards; then ask something off-topic (“What is the capital of France?”) → polite refusal.
 
 ## Logo for slides and the report
 
@@ -226,7 +227,7 @@ Restart the server, then Profile â†’ Notifications â†’ turn on email �
 
 - Only one agent runs at a time; it opens a visible Edge window on this computer.
 - To use MongoDB Atlas (cloud) instead of a local database, change `MONGO_URI` in `.env`.
-- Sources are read only when the user clicks "Find newâ€¦", a few pages at most, with pauses in between.
+- Sources are read only when the user clicks "Find new…", a few pages at most, with pauses in between.
 - DAAD's scholarship database disallows automated access (robots.txt) and the USEFP site blocks it, so those programmes come from the catalogue file. **Before the demo, confirm each programme's dates on its official page and update `programs.js` (`cycle`, `verified`).**
 
 

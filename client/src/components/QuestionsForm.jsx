@@ -13,6 +13,7 @@ export default function QuestionsForm({ questions, saved = [], submitLabel = 'Sa
   // nothing is chosen for the student: a saved answer is shown only when it is one of THIS form's options
   const startValue = (q) => {
     const s = savedBy[norm(q.label)];
+    if (q.kind === 'consent' || q.clear) return ''; // agreeing is asked fresh; a clashing answer is not offered again
     if (!s || s.kind === 'file') return '';
     if (q.kind === 'choice' && q.options?.length) return q.options.includes(s.value) ? s.value : '';
     return s.value || '';
@@ -23,6 +24,16 @@ export default function QuestionsForm({ questions, saved = [], submitLabel = 'Sa
   const [error, setError] = useState('');
 
   const set = (label, v) => setValues((s) => ({ ...s, [label]: v }));
+
+  // choice lists ("First choice".."Eighth choice"): an option may be used once per list.
+  // Options already used by a box on the form, or by another question here in the same list, are not offered.
+  const listOf = (q) => String(q.label || '').split(' › ').slice(0, -1).join(' › ');
+  const usedBy = (q, o) => {
+    const t = (q.taken || []).find((x) => norm(x.value) === norm(o));
+    if (t) return t.by;
+    const other = q.taken && questions.find((x) => x !== q && x.taken && listOf(x) === listOf(q) && norm(values[x.label]) === norm(o));
+    return other ? questionParts(other.label).title : '';
+  };
 
   const upload = async (q, file) => {
     if (!file) return;
@@ -50,12 +61,27 @@ export default function QuestionsForm({ questions, saved = [], submitLabel = 'Sa
   const optional = questions.filter((q) => !q.required);
   // the question in short words; its explanation as small grey text underneath (no field placeholders)
   const field = (q) => {
+    if (q.kind === 'consent') {
+      const statement = String(q.text || q.label || '').split(' › ').pop().replace(/[\s*]+$/, '');
+      return (
+        <label className={`q-consent ${values[q.label] === 'yes' ? 'on' : ''}`} key={q.label}>
+          <input type="checkbox" checked={values[q.label] === 'yes'} onChange={(e) => set(q.label, e.target.checked ? 'yes' : '')} />
+          <span>
+            <span className="q-consent-text">{statement}{!q.text && /[a-z]$/i.test(statement) && statement.length > 120 ? '…' : ''}</span>
+            {q.hint && <span className="q-hint">{q.hint}</span>}
+            <span className="q-consent-agree">I have read this and I agree</span>
+          </span>
+        </label>
+      );
+    }
     const { title, hint } = questionParts(q.label);
+    const failed = /^the agent could not/.test(q.reason || '');
     return (
     <div className="q-row" key={q.label}>
       <label className="q-label">
         {title}{q.required && <span className="req"> *</span>}
         {hint && <span className="q-hint">{hint}</span>}
+        {failed && <span className="q-failed"><Icon name="alert" size={13} /> {q.reason.replace(/^the agent/, 'The agent')}</span>}
       </label>
       {q.kind === 'file' ? (
         <div className="q-file">
@@ -68,16 +94,23 @@ export default function QuestionsForm({ questions, saved = [], submitLabel = 'Sa
       ) : q.kind === 'choice' && q.options?.length ? (
         q.options.length <= 5 ? (
           <div className="q-choices">
-            {q.options.map((o) => (
-              <label key={o} className="q-choice">
-                <input type="radio" name={q.label} checked={values[q.label] === o} onChange={() => set(q.label, o)} /> {o}
-              </label>
-            ))}
+            {q.options.map((o) => {
+              const by = values[q.label] === o ? '' : usedBy(q, o);
+              return (
+                <label key={o} className={`q-choice ${by ? 'q-used' : ''}`}>
+                  <input type="radio" name={q.label} disabled={!!by} checked={values[q.label] === o} onChange={() => set(q.label, o)} /> {o}
+                  {by && <span className="tiny muted"> (your {by})</span>}
+                </label>
+              );
+            })}
           </div>
         ) : (
           <select value={values[q.label]} onChange={(e) => set(q.label, e.target.value)}>
             <option value="">Choose…</option>
-            {q.options.map((o) => <option key={o} value={o}>{o}</option>)}
+            {q.options.map((o) => {
+              const by = values[q.label] === o ? '' : usedBy(q, o);
+              return <option key={o} value={o} disabled={!!by}>{by ? `${o} (already your ${by})` : o}</option>;
+            })}
           </select>
         )
       ) : q.kind === 'long' ? (
@@ -94,7 +127,7 @@ export default function QuestionsForm({ questions, saved = [], submitLabel = 'Sa
     const out = [];
     const docs = list.filter((q) => q.kind === 'file');
     if (docs.length) out.push(['Documents to upload', docs]);
-    const rest = list.filter((q) => q.kind !== 'file');
+    const rest = list.filter((q) => q.kind !== 'file' && q.kind !== 'consent');
     const byContext = new Map();
     for (const q of rest) {
       const c = questionParts(q.label).context;
@@ -102,6 +135,8 @@ export default function QuestionsForm({ questions, saved = [], submitLabel = 'Sa
       byContext.get(c).push(q);
     }
     for (const [c, qs] of byContext) out.push([c || (docs.length ? 'Questions' : ''), qs]);
+    const consents = list.filter((q) => q.kind === 'consent');
+    if (consents.length) out.push(['Declarations: read each one and tick it if you agree', consents]);
     return out;
   };
   const render = (list) => groups(list).map(([title, qs]) => (

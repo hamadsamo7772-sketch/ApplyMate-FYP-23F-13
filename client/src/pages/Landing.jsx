@@ -4,11 +4,11 @@ import { Logo } from '../components/AppLayout.jsx';
 import { useUser } from '../App.jsx';
 
 const PLATFORMS = [
-  ['Fulbright', 'Masterâ€™s and PhD in the USA, through USEFP'],
-  ['Chevening', 'One-year Masterâ€™s in the UK'],
-  ['Stipendium Hungaricum', 'Bachelorâ€™s to PhD in Hungary, through HEC'],
+  ['Fulbright', 'Master’s and PhD in the USA, through USEFP'],
+  ['Chevening', 'One-year Master’s in the UK'],
+  ['Stipendium Hungaricum', 'Bachelor’s to PhD in Hungary, through HEC'],
   ['DAAD EPOS', 'Development-related postgraduate courses in Germany'],
-  ['Erasmus Mundus', 'Joint Masterâ€™s across Europe, live from the EU catalogue'],
+  ['Erasmus Mundus', 'Joint Master’s across Europe, live from the EU catalogue'],
   ['Jobs', 'A practice job on our demo portal, with more jobs coming soon'],
 ];
 
@@ -48,25 +48,25 @@ export default function Landing() {
         <div className="demo" aria-label="Example: profile values being filled into an application form">
           <div className="demo-card demo-profile">
             <div className="who">
-              <span className="avatar">HS</span>
+              <span className="avatar">AR</span>
               <div>
                 <strong className="small" style={{ display: 'block' }}>Your ApplyMate profile</strong>
                 <span className="tiny muted">Saved once</span>
               </div>
             </div>
             <dl>
-              <dt>Name</dt><dd>Hamadullah Samo</dd>
+              <dt>Name</dt><dd>Ali Raza Khan</dd>
               <dt>Father</dt><dd>Muhammad Raza</dd>
-              <dt>CNIC</dt><dd>45504-â€¢â€¢â€¢â€¢â€¢â€¢â€¢-9</dd>
+              <dt>CNIC</dt><dd>45504-•••••••-9</dd>
               <dt>Degree</dt><dd>BS Computer Science</dd>
               <dt>CGPA</dt><dd>3.50</dd>
             </dl>
           </div>
           <div className="demo-card demo-form">
             <div className="site"><i /><i /><i /> scholarship portal, application step 1 of 3</div>
-            <div className="demo-field d1"><label>Applicant name</label><div className="box"><span>Hamadullah Samo</span></div></div>
-            <div className="demo-field d2"><label>Guardianâ€™s name</label><div className="box"><span>Muhammad Raza</span></div></div>
-            <div className="demo-field d3"><label>National identity card #</label><div className="box"><span>45504-â€¢â€¢â€¢â€¢â€¢â€¢â€¢-9</span></div></div>
+            <div className="demo-field d1"><label>Applicant name</label><div className="box"><span>Ali Raza Khan</span></div></div>
+            <div className="demo-field d2"><label>Guardian’s name</label><div className="box"><span>Muhammad Raza</span></div></div>
+            <div className="demo-field d3"><label>National identity card #</label><div className="box"><span>45504-•••••••-9</span></div></div>
             <div className="demo-field d4"><label>Highest qualification</label><div className="box"><span>BS Computer Science</span></div></div>
             <div className="demo-stop"><Icon name="pause" size={15} /> Statement of purpose: your turn to write</div>
           </div>
@@ -92,7 +92,7 @@ export default function Landing() {
             </li>
             <li>
               <h3>Review and submit</h3>
-              <p>The agent pauses for essays and â€œIâ€™m not a robotâ€ checks and never submits. You check the form and press submit.</p>
+              <p>The agent pauses for essays and “I’m not a robot” checks and never submits. You check the form and press submit.</p>
             </li>
           </ol>
         </div>
@@ -139,12 +139,12 @@ export default function Landing() {
             <div>
               <Icon name="cpu" size={24} />
               <h3>Offline AI</h3>
-              <p>The language model runs on your own computer. It only sees form labels like â€œGuardianâ€™s nameâ€, never your values.</p>
+              <p>The language model runs on your own computer. It only sees form labels like “Guardian’s name”, never your values.</p>
             </div>
             <div>
               <Icon name="shield" size={24} />
               <h3>You submit, not the bot</h3>
-              <p>The agent stops before every submit button. â€œIâ€™m not a robotâ€ checks and essays are always yours, with no shortcuts.</p>
+              <p>The agent stops before every submit button. “I’m not a robot” checks and essays are always yours, with no shortcuts.</p>
             </div>
             <div>
               <Icon name="board" size={24} />

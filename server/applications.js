@@ -70,6 +70,7 @@ async function rememberQuestions(opportunityId, questions) {
   if (!o) return;
   const list = [...(o.formQuestions || [])];
   for (const q of questions) {
+    if (q.kind === 'consent') continue; // declarations belong to the run, not to the "Before you apply" list
     if (list.some((x) => normalizeQ(x.label) === normalizeQ(q.label))) continue;
     list.push({ label: q.label, kind: q.kind, options: (q.options || []).slice(0, 60), required: !!q.required, hint: q.hint || '' });
   }
@@ -95,7 +96,7 @@ async function startRun(app, opportunity, user, formUrl) {
   const onPause = (stop) =>
     new Promise((resolve) => {
       state.status = 'waiting';
-      state.pause = { kind: stop.kind || 'action', reason: stop.reason, message: stop.message, ...(stop.questions ? { questions: stop.questions } : {}) };
+      state.pause = { kind: stop.kind || 'action', reason: stop.reason, message: stop.message, ...(stop.questions ? { questions: stop.questions } : {}), ...(stop.yes ? { yes: stop.yes, no: stop.no } : {}) };
       // remember which questions this programme's form asks (no answers), for the "Before you apply" list
       if (stop.questions?.length) rememberQuestions(opportunity._id, stop.questions).catch(() => {});
       state.resolve = (answer) => {
@@ -250,12 +251,17 @@ router.post('/:id/respond', async (req, res) => {
   if (!s?.resolve) return res.status(400).json({ error: 'The agent is not waiting for an answer.' });
   if (s.pause?.kind === 'questions' && req.body?.answer) {
     const user = await User.findById(req.user._id);
+    const asked = new Set((s.pause.questions || []).map((q) => normalizeQ(q.label)));
+    const consentAsked = new Set((s.pause.questions || []).filter((q) => q.kind === 'consent').map((q) => normalizeQ(q.label)));
     for (const a of req.body.answers || []) {
-      if (a?.label && a.kind !== 'file' && String(a.value ?? '').trim()) setAnswer(user, { label: a.label, kind: a.kind, value: String(a.value).trim() });
+      if (!a?.label || a.kind === 'file' || a.kind === 'consent' || consentAsked.has(normalizeQ(a.label))) continue;
+      if (String(a.value ?? '').trim()) setAnswer(user, { label: a.label, kind: a.kind, value: String(a.value).trim() });
     }
     await user.save();
-    const asked = new Set((s.pause.questions || []).map((q) => normalizeQ(q.label)));
-    const given = (user.profile.answers || []).filter((a) => asked.has(a.q)).map((a) => (a.toObject ? a.toObject() : a));
+    // declarations are agreed to for this application only: handed to the agent, never stored in the profile
+    const agreed = (req.body.answers || []).filter((a) => a?.kind === 'consent' && a.value === 'yes' && consentAsked.has(normalizeQ(a.label)))
+      .map((a) => ({ label: a.label, kind: 'consent', value: 'yes' }));
+    const given = [...(user.profile.answers || []).filter((a) => asked.has(a.q) && !consentAsked.has(a.q)).map((a) => (a.toObject ? a.toObject() : a)), ...agreed];
     s.resolve(given.length ? given : true);
     return res.json({ ok: true, saved: given.length });
   }

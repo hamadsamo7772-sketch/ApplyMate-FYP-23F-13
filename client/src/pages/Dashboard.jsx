@@ -56,6 +56,8 @@ export default function Dashboard() {
         </div>
       </section>
 
+      <Steps d={d} />
+
       <section className="panel pipeline" aria-label="Application tracker summary">
         {pipeline.map(([label, n]) => (
           <div key={label}><strong>{n}</strong><span>{label}</span></div>
@@ -123,6 +125,31 @@ function TopList({ title, to, items, empty }) {
             <span className="small muted">{[o.org, o.location].filter(Boolean).join(', ')}</span>
           </span>
           <Icon name="chevron" />
+        </Link>
+      ))}
+    </section>
+  );
+}
+
+// Design B: three plain steps so every student knows what to do next.
+function Steps({ d }) {
+  const profileDone = d.profile.percent >= 100;
+  const picked = (d.runs || []).length > 0;
+  const steps = [
+    { n: 1, title: 'Your profile', to: '/app/profile', done: profileDone,
+      text: profileDone ? 'Complete. The agent has what it needs.' : `${d.profile.percent}% done. Fill the rest so the agent pauses less.` },
+    { n: 2, title: 'Pick a scholarship', to: '/app/scholarships', done: picked,
+      text: d.topScholarships?.length ? `${d.topScholarships.length} good match${d.topScholarships.length === 1 ? ' is' : 'es are'} waiting for you.` : 'See which ones you can apply to now.' },
+    { n: 3, title: 'The agent applies', to: '/app/activity', done: false,
+      text: 'It opens the real form, fills it and asks you only what it cannot know.' },
+  ];
+  const current = steps.find((s) => !s.done)?.n || 3;
+  return (
+    <section className="steps-bar" aria-label="How ApplyMate works">
+      {steps.map((s) => (
+        <Link key={s.n} to={s.to} className={`hstep ${s.done ? 'done' : ''} ${s.n === current ? 'current' : ''}`}>
+          <span className="hstep-num">{s.done ? <Icon name="check" size={16} /> : s.n}</span>
+          <span className="hstep-body"><strong>{s.title}</strong><span>{s.text}</span></span>
         </Link>
       ))}
     </section>
